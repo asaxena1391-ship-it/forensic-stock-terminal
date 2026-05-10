@@ -1,7 +1,6 @@
 {
   "name": "forensic-stock-backend",
   "version": "1.0.0",
-  "description": "Backend for Indian stock forensic analysis",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
