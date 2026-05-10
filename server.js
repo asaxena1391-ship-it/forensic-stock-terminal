@@ -6,53 +6,51 @@ const cors = require('cors');
 const app = express();
 app.use(cors());
 
-app.get('/', (req, res) => {
-    res.send('Terminal Engine Online. Use /api/analyze/TICKER');
-});
+app.get('/', (req, res) => res.send('Terminal Engine Online.'));
 
 app.get('/api/analyze/:ticker', async (req, res) => {
     try {
         const ticker = req.params.ticker.toUpperCase();
-        const url = `https://www.screener.in/company/${ticker}/`;
+        const url = `https://www.screener.in/company/${ticker}/consolidated/`;
 
         const { data } = await axios.get(url, {
-            headers: { 'User-Agent': 'Mozilla/5.0' }
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
         });
 
         const $ = cheerio.load(data);
 
-        // IMPROVED SELECTORS
-        const price = $('.top-ratios li:contains("Current Price") .number').text().trim();
-        const roce = parseFloat($('.top-ratios li:contains("ROCE") .number').text()) || 0;
-        const debtToEquity = parseFloat($('.top-ratios li:contains("Debt to equity") .number').text()) || 0;
-        const salesGrowth = parseFloat($('.top-ratios li:contains("Sales growth") .number').text()) || 0;
-        const promoterHolding = parseFloat($('.top-ratios li:contains("Promoter holding") .number').text()) || 0;
+        // HELPER FUNCTION: Finds a number based on the label text
+        const getVal = (label) => {
+            return $(`.top-ratios li:contains("${label}") .number`).first().text().trim() || 
+                   $(`span:contains("${label}") + span .number`).text().trim() || "0";
+        };
 
-        // ADVANCED FORENSIC LOGIC
+        const price = getVal("Current Price");
+        const roce = parseFloat(getVal("ROCE")) || 0;
+        const debtToEquity = parseFloat(getVal("Debt to equity")) || 0;
+        const salesGrowth = parseFloat(getVal("Sales growth")) || 0;
+        const promoterHolding = parseFloat(getVal("Promoter holding")) || 0;
+
+        // FORENSIC LOGIC
         let forensicStatus = "NEUTRAL";
-        if (debtToEquity < 0.3 && promoterHolding > 50) forensicStatus = "PASS (Strong Balance Sheet)";
-        if (debtToEquity > 1.2) forensicStatus = "FAIL (High Leverage)";
+        if (debtToEquity < 0.3 && promoterHolding > 40) forensicStatus = "PASS (Strong)";
+        if (debtToEquity > 1.0) forensicStatus = "FAIL (High Debt)";
 
-        // MULTIBAGGER CHECK (ROCE > 20% & Growth > 15%)
-        const isMultibagger = (roce > 20 && salesGrowth > 15) ? "HIGH POTENTIAL" : "STABLE/WATCH";
+        // MULTIBAGGER CHECK
+        const isMultibagger = (roce > 20 && salesGrowth > 12) ? "HIGH POTENTIAL" : "WATCHLIST";
 
         res.json({
             ticker,
-            currentPrice: `₹${price}`,
-            metrics: { 
-                roce: `${roce}%`, 
-                debtToEquity, 
-                salesGrowth: `${salesGrowth}%`,
-                promoterHolding: `${promoterHolding}%`
-            },
+            currentPrice: price ? `₹${price}` : "N/A",
+            metrics: { roce: `${roce}%`, debtToEquity, salesGrowth: `${salesGrowth}%`, promoterHolding: `${promoterHolding}%` },
             analysis: { forensicStatus, isMultibagger },
             timestamp: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
         });
 
     } catch (error) {
-        res.status(500).json({ error: "Failed to fetch data." });
+        res.status(500).json({ error: "Scrape Failed" });
     }
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server live` ));
+app.listen(PORT, () => console.log(`Engine running on ${PORT}`));
