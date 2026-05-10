@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Indian Equity Forensic Terminal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: 'Courier New', Courier, monospace; }
+        .terminal-card { border: 1px solid #334155; background: #1e293b; }
+        .pass { color: #4ade80; }
+        .fail { color: #f87171; }
+    </style>
+</head>
+<body class="p-4 md:p-10">
+    <div class="max-w-4xl mx-auto">
+        <header class="mb-10 border-b border-slate-700 pb-4">
+            <h1 class="text-3xl font-bold text-blue-400">STOCK_FORENSIC_V1.0</h1>
+            <p class="text-slate-400">Equity Scraper & Multibagger Screener</p>
+        </header>
+
+        <div class="flex gap-2 mb-10">
+            <input type="text" id="tickerInput" placeholder="Enter Ticker (e.g. RAJOOENG)" 
+                   class="bg-slate-800 border border-slate-600 p-3 rounded flex-grow text-white uppercase outline-none focus:border-blue-500">
+            <button onclick="runAnalysis()" class="bg-blue-600 hover:bg-blue-700 px-8 py-3 rounded font-bold transition">SCAN_TICKER</button>
+        </div>
+
+        <div id="loader" class="hidden mb-10 animate-pulse text-blue-400">INITIALIZING SCRAPE... ACCESSING DATA...</div>
+
+        <div id="resultCard" class="hidden terminal-card p-6 rounded-lg shadow-2xl">
+            <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-2">
+                <h2 id="resTicker" class="text-2xl font-bold">---</h2>
+                <span id="resPrice" class="text-xl text-yellow-400">---</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div><p class="text-slate-400 text-xs">ROCE</p><p id="resRoce" class="font-bold text-lg">---</p></div>
+                <div><p class="text-slate-400 text-xs">SALES_GROWTH</p><p id="resGrowth" class="font-bold text-lg">---</p></div>
+                <div><p class="text-slate-400 text-xs">D/E_RATIO</p><p id="resDebt" class="font-bold text-lg">---</p></div>
+                <div><p class="text-slate-400 text-xs">PROMOTER_HOLD</p><p id="resPromoter" class="font-bold text-lg">---</p></div>
+            </div>
+
+            <div class="border-t border-slate-700 pt-4">
+                <div class="mb-4">
+                    <p class="text-xs text-slate-400">FORENSIC_VERDICT</p>
+                    <p id="resForensic" class="font-bold text-xl uppercase italic">---</p>
+                </div>
+                <div>
+                    <p class="text-xs text-slate-400">MULTIBAGGER_POTENTIAL</p>
+                    <p id="resMulti" class="font-bold text-xl uppercase italic">---</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // REPLACE THIS URL WITH YOUR ACTUAL RENDER LINK
+        const API_BASE = "https://forensic-stock-terminal.onrender.com/api/analyze/";
+
+        async function runAnalysis() {
+            const ticker = document.getElementById('tickerInput').value.trim();
+            if(!ticker) return alert("Enter a ticker!");
+
+            document.getElementById('loader').classList.remove('hidden');
+            document.getElementById('resultCard').classList.add('hidden');
+
+            try {
+                const response = await fetch(`${API_BASE}${ticker}`);
+                const data = await response.json();
+
+                document.getElementById('resTicker').innerText = data.ticker;
+                document.getElementById('resPrice').innerText = data.currentPrice;
+                document.getElementById('resRoce').innerText = data.metrics.roce;
+                document.getElementById('resGrowth').innerText = data.metrics.salesGrowth;
+                document.getElementById('resDebt').innerText = data.metrics.debtToEquity;
+                document.getElementById('resPromoter').innerText = data.metrics.promoterHolding;
+                
+                const forensic = document.getElementById('resForensic');
+                forensic.innerText = data.analysis.forensicStatus;
+                forensic.className = data.analysis.forensicStatus.includes("FAIL") ? "font-bold text-xl fail" : "font-bold text-xl pass";
+
+                document.getElementById('resMulti').innerText = data.analysis.isMultibagger;
+
+                document.getElementById('resultCard').classList.remove('hidden');
+            } catch (err) {
+                alert("Error fetching data. Ensure backend is live.");
+            } finally {
+                document.getElementById('loader').classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
